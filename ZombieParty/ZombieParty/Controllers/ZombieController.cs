@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ZombieParty.Models;
 using ZombieParty.Models.Data;
+using ZombieParty.Services;
 using ZombieParty.Utility;
 using ZombieParty.ViewModels;
 
@@ -10,22 +11,25 @@ namespace ZombieParty.Controllers
 {
     public class ZombieController : Controller
     {
-        private ZombiePartyDbContext _baseDonnees { get; set; }
+        private readonly IZombieTypeService _serviceZT;
+        private readonly IZombieService _serviceZ;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public ZombieController(ZombiePartyDbContext baseDonnees, IWebHostEnvironment webHostEnvironment)
+        public ZombieController(IZombieTypeService serviceZT, IZombieService serviceZ, IWebHostEnvironment webHostEnvironment)
         {
-            _baseDonnees = baseDonnees;
+            _serviceZT = serviceZT;
+            _serviceZ = serviceZ;
             _webHostEnvironment = webHostEnvironment;
         }
 
+
         public async Task<IActionResult> Index()
         {
-            List<Zombie> zombiesList = await _baseDonnees.Zombies.OrderBy(z => z.Name).Include(z => z.ZombieType).ToListAsync();
+            IEnumerable<Zombie> zombiesList = await _serviceZ.GetAllIndexAsync();
 
             return View(zombiesList);
         }
-
+        /*
         public async Task<IActionResult> StrongestZombies()
         {
             List<Zombie> zombiesList = await _baseDonnees.Zombies.Where(z => z.Point >= 8).OrderBy(z => z.Name).Include(z => z.ZombieType).ToListAsync();
@@ -121,15 +125,11 @@ namespace ZombieParty.Controllers
 
             return View(zombieVM);
         }
-
+        */
         public IActionResult Create()
         {
             ZombieVM zombieVM = new ZombieVM();
-            zombieVM.ZombieTypeSelectList = _baseDonnees.ZombieTypes.Select(t => new SelectListItem
-            {
-                Text = t.TypeName,
-                Value = t.Id.ToString()
-            }).OrderBy(t => t.Text);
+            zombieVM.ZombieTypeSelectList = _serviceZT.ListZombieTypeDisponible();
 
             return View(zombieVM);
         }
@@ -138,6 +138,7 @@ namespace ZombieParty.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ZombieVM zombieVM)
         {
+
             //Si le modèle est valide le zombie est ajouté et nous sommes redirigé vers index.
             if (ModelState.IsValid)
             {
@@ -165,18 +166,14 @@ namespace ZombieParty.Controllers
                     zombieVM.Zombie.Image = fileName + extenstion;
                 }
 
-                await _baseDonnees.Zombies.AddAsync(zombieVM.Zombie);
-                await _baseDonnees.SaveChangesAsync();
+                await _serviceZ.CreateAsync(zombieVM.Zombie);
                 TempData[AppConstants.Success] = $"Zombie {zombieVM.Zombie.Name} added";
                 return this.RedirectToAction("Index");
             }
-            zombieVM.ZombieTypeSelectList = _baseDonnees.ZombieTypes.Select(t => new SelectListItem
-            {
-                Text = t.TypeName,
-                Value = t.Id.ToString()
-            }).OrderBy(t => t.Text);
+            zombieVM.ZombieTypeSelectList = _serviceZT.ListZombieTypeDisponible();
 
             return View(zombieVM);
         }
+        
     }
 }

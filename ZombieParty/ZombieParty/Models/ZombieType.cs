@@ -20,5 +20,6 @@ namespace ZombieParty.Models
         [DisplayName("Zombies")]
         [ValidateNever]
         public virtual List<Zombie>? Zombies { get; set; }
+        public bool IsDisponible { get; set; } = true;
     }
 }
